@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTM Link Generator</title>
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <h2>UTM Link Generator</h2>
+    <form id="utmForm">
+        <label for="url">URL:</label>
+        <input type="text" id="url" name="url" placeholder="請輸入目標網址" required>
+        
+        <label for="utm_id">UTM ID:（識別用，可以用日期或時間。 ex：20241017）</label>
+        <input type="text" id="utm_id" name="utm_id" pattern="[a-zA-Z0-9_]+" title="只能包含英文字母、數字和底線" placeholder="只能包含英文字母、數字和底線" required>
+
+        <label for="utm_term">UTM Term:（關鍵字廣告所用的關鍵字，可以包含字母、數字和底線）</label>
+        <input type="text" id="utm_term" name="utm_term" pattern="[a-zA-Z0-9_]+" title="只能包含英文字母、數字和底線" placeholder="只能包含英文字母、數字和底線" required>
+
+        <label for="utm_content">UTM Content:<br>（例如在FB的ADS同時投兩個廣告，設定不同參數用以區分。 ex：ads1 or ads2，可以包含字母、數字和底線）</label>
+        <textarea id="utm_content" name="utm_content" pattern="[a-zA-Z0-9_]+" title="只能包含英文字母、數字和底線" placeholder="只能包含英文字母、數字和底線"></textarea>
+
+        <button type="button" onclick="generateLinks()">產生連結</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        function generateLinks() {
+            var form = document.getElementById('utmForm');
+            var url = form.elements['url'].value.trim();
+            var utm_id = form.elements['utm_id'].value.trim();
+            var utm_term = form.elements['utm_term'].value.trim();
+            var utm_content = form.elements['utm_content'].value.trim();
+
+            // 檢查是否含有中文或特殊符號
+            var regex = /^[a-zA-Z0-9_]+$/;
+            var isValid = regex.test(utm_id) && regex.test(utm_term) && regex.test(utm_content);
+            
+            if (!isValid) {
+                alert('UTM ID、UTM Term 和 UTM Content 只能包含英文字母、數字和底線！');
+                return;
+            }
+
+            var channels = [
+                { source: 'fb', medium: 'post', campaign: 'page' },
+                { source: 'fb', medium: 'cpc', campaign: 'ADS' },
+                { source: 'ig', medium: 'post', campaign: 'page' },
+                { source: 'ig', medium: 'cpc', campaign: 'ADS' },
+                { source: 'line', medium: 'linebiz', campaign: 'OAM' },
+                { source: 'line', medium: 'LAP', campaign: 'OAM' },
+                { source: 'line', medium: 'post', campaign: 'openchat' },
+                { source: 'line', medium: 'post', campaign: 'linegroup' }
+            ];
+
+            var resultsContainer = document.getElementById('result');
+            resultsContainer.innerHTML = ''; // 清空之前的結果
+
+            channels.forEach(function(channel) {
+                var link = url + '?utm_source=' + channel.source +
+                                    '&utm_medium=' + channel.medium +
+                                    '&utm_campaign=' + channel.campaign +
+                                    '&utm_id=' + utm_id +
+                                    '&utm_term=' + utm_term +
+                                    '&utm_content=' + utm_content;
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'generate_links.php', true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        var response = JSON.parse(xhr.responseText);
+                        var resultHTML = '<p><strong>' + channel.source.toUpperCase() + ' ' + channel.medium.toUpperCase() + '</strong>: <a href="' + response.short_url + '" target="_blank">' + response.short_url + '</a></p>';
+                        resultsContainer.innerHTML += resultHTML;
+                    } else {
+                        console.error('生成連結時發生錯誤：', xhr.status);
+                        resultsContainer.innerHTML += '<p>生成連結時發生錯誤</p>';
+                    }
+                };
+
+                xhr.onerror = function() {
+                    console.error('發生網路錯誤');
+                    resultsContainer.innerHTML += '<p>發生網路錯誤</p>';
+                };
+
+                xhr.send('url=' + encodeURIComponent(link));
+            });
+        }
+    </script>
+</body>
+</html>
